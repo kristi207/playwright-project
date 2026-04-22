@@ -1,71 +1,66 @@
+
 const { test, expect } = require('@playwright/test');
 
-const APP_URL = 'https://app.usebubbles.com';
 
-async function open(page, path = '/') {
-  await page.goto(`${APP_URL}${path}`, { waitUntil: 'domcontentloaded' });
+const TEST_USER = {
+  fullName: 'Test User',
+  password: 'Test@1234',
+};
+
+async function typeLikeUser(locator, value) {
+  await locator.click();
+  await locator.fill('');
+  await locator.type(value, { delay: 50 });
 }
 
-async function assertAuthOrWorkspaceShell(page) {
-  const authHeading = page.getByRole('heading', { name: /Create an account|Welcome back/i });
+test('User can complete signup form and reach OTP verification', async ({ page }) => {
+  const uniqueEmail = `kristipanta${Date.now()}@betaninjas.com`;
 
-  if (await authHeading.count()) {
-    await expect(authHeading.first()).toBeVisible();
-    await expect(
-      page
-        .getByRole('button', {
-          name: /Continue with Google|Continue with Microsoft|Continue with email|Log in/i,
-        })
-        .first()
-    ).toBeVisible();
-    return;
-  }
+ 
+  await page.goto('https://nepalhomestays.com');
 
-  await expect(page.getByRole('button', { name: /Settings|Help|Upgrade|New Recording/i }).first()).toBeVisible();
-}
+  // Make sure the page loaded correctly
+  await expect(page).toHaveTitle(/Nepal Homestays/i);
 
-// homepage smoke
-test('homepage loads', async ({ page }) => {
-  const response = await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
+  await page.getByRole('link', { name: 'Sign Up' }).click();
 
-  expect(response).not.toBeNull();
-  expect(response.ok()).toBeTruthy();
-  await expect(page).toHaveTitle(/Bubbles/i);
-  await expect(page.locator('#root')).toBeVisible();
+  // Wait for the Create Account page to load
+  await expect(page).toHaveURL(/signup/i);
+  await expect(page.getByRole('heading', { name: 'Create Account' })).toBeVisible();
+
+  await typeLikeUser(page.getByPlaceholder('Enter your full name'), TEST_USER.fullName);
+  await typeLikeUser(page.getByPlaceholder('Enter your email or mobile number'), uniqueEmail);
+  await typeLikeUser(page.getByPlaceholder('Create a strong password'), TEST_USER.password);
+  await typeLikeUser(page.getByPlaceholder('Confirm your password'), TEST_USER.password);
+
+  await page.getByRole('button', { name: 'Create Account' }).click();
+
+  await expect(page.getByRole('heading', { name: 'Verify Your Account' })).toBeVisible({ timeout: 20000 });
+  const verificationDialog = page.getByRole('dialog', { name: 'Verify Your Account' });
+  await expect(verificationDialog.getByRole('textbox')).toBeVisible();
+  await expect(verificationDialog.getByRole('button', { name: 'Verify Code' })).toBeVisible();
+  await expect(verificationDialog.getByText('Enter the 6-digit verification code sent to your email.')).toBeVisible();
+
+  console.log('Signup reaches OTP verification step.');
 });
 
-// metadata check
-test('homepage has core metadata', async ({ page }) => {
-  await open(page);
 
-  await expect(page.locator('meta[name="application-name"]')).toHaveAttribute('content', 'Bubbles');
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute(
-    'content',
-    /record|meeting|screen/i
-  );
-  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', /Bubbles/i);
-});
 
-// /login currently resolves to not-found guidance
-test('login route shows support guidance', async ({ page }) => {
-  await open(page, '/login');
+test('Shows error when passwords do not match', async ({ page }) => {
 
-  await expect(page.getByRole('heading', { name: /This link was not found/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /hello@usebubbles\.com/i })).toBeVisible();
-});
+  await page.goto('https://nepalhomestays.com/signup');
 
-// account entry UI appears on homepage for anonymous visitors
-test('homepage exposes auth or workspace entry points', async ({ page }) => {
-  await open(page);
+  await page.getByPlaceholder('Enter your full name').fill('Test User');
+  await page.getByPlaceholder('Enter your email or mobile number').fill('test@example.com');
+  await page.getByPlaceholder('Create a strong password').fill('Test@1234');
 
-  await assertAuthOrWorkspaceShell(page);
-});
+  // Intentionally type a DIFFERENT confirm password
+  await page.getByPlaceholder('Confirm your password').fill('WrongPassword');
 
-// static web app assets
-test('app shell references manifest and scripts', async ({ page }) => {
-  await open(page);
+  await page.getByRole('button', { name: 'Create Account' }).click();
 
-  await expect(page.locator('link[rel="manifest"][href="/manifest.json"]')).toHaveCount(1);
-  await expect(page.locator('link[rel="shortcut icon"]')).toHaveCount(1);
-  await expect(page.locator('script[src*="/static/js/main."]')).toHaveCount(1);
+  // Expect the error message shown in your screenshot
+  await expect(page.getByText('Passwords do not match')).toBeVisible();
+
+  console.log('Password mismatch validation works!');
 });

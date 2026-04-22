@@ -1,19 +1,27 @@
-// @ts-check
+/* @ts-check
 import { test, expect } from '@playwright/test';
 
-const APP_URL = 'https://app.usebubbles.com';
+test('has title', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
 
-test('app title contains bubbles', async ({ page }) => {
-  await page.goto(APP_URL, { waitUntil: 'domcontentloaded' });
-
-  await expect(page).toHaveTitle(/Bubbles/i);
+  // Expect a title "to contain" a substring.
+  await expect(page).toHaveTitle(/Playwright/);
 });
 
-test('login route is reachable', async ({ page }) => {
-  const response = await page.goto(`${APP_URL}/login`, { waitUntil: 'domcontentloaded' });
+test('get started link', async ({ page }) => {
+  await page.goto('https://playwright.dev/');
 
-  expect(response).not.toBeNull();
-  expect(response?.status()).toBeLessThan(400);
-  await expect(page.getByRole('heading', { name: /This link was not found/i })).toBeVisible();
-  await expect(page.getByRole('link', { name: /hello@usebubbles\.com/i })).toBeVisible();
+  // Click the get started link.
+  await page.getByRole('link', { name: 'Get started' }).click();
+
+  // Expects page to have a heading with the name of Installation.
+  await expect(page.getByRole('heading', { name: 'Installation' })).toBeVisible();
+});
+*/
+
+const { test, expect } = require('@playwright/test');
+
+test('open homestay app', async ({ page }) => {
+  await page.goto('https://www.nepalhomestays.com/');
+  await expect(page).toHaveURL(/nepalhomestay/);
 });
