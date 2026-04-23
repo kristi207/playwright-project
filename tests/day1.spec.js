@@ -64,3 +64,21 @@ test('Shows error when passwords do not match', async ({ page }) => {
 
   console.log('Password mismatch validation works!');
 });
+
+test('negative login - shows error message', async ({ page }) => {
+  // Open website
+  await page.goto('https://nepalhomestays.com');
+
+  // Click Login
+  await page.getByRole('link', { name: 'Login' }).click();
+
+  // Enter wrong details
+  await page.getByPlaceholder('Enter your email or mobile number').fill('wrong@example.com');
+  await page.getByPlaceholder('Enter your password').fill('wrongpassword');
+
+  // Click Login button
+  await page.getByRole('button', { name: /login/i }).click();
+
+  // Check error message appears
+  await expect(page.getByText(/error|invalid|incorrect/i)).toBeVisible();
+});
